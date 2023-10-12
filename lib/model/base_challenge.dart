@@ -46,7 +46,7 @@ class BaseChallenge extends StatelessWidget {
             child: ParticlesFly(
               height: MediaQuery.of(context).size.height,
               width: MediaQuery.of(context).size.width,
-              numberOfParticles: 100,
+              numberOfParticles: 25,
               isRandSize: true,
               particleColor: isDarkMode ? Colors.white : Colors.black,
               lineColor: isDarkMode ? Colors.white : Colors.black,

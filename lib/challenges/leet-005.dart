@@ -1,5 +1,3 @@
-import 'dart:ffi';
-
 import 'package:fleeter/model/base_challenge.dart';
 
 class LeetcodeC_005 extends BaseChallenge {
@@ -15,10 +13,10 @@ class LeetcodeC_005 extends BaseChallenge {
   static String solveChallenge() {
     String string = "babadboooooob";
     List<String> palindromes = [];
-    // iterate through string, and find palindromes
     for (int i = 0; i < string.length; i++) {
-      for (int j = i + 1; j <= string.length; j++) {  // Updated termination condition
-        String substring = string.substring(i, j);  // No need to add 1 to j now
+      for (int j = i + 1; j <= string.length; j++) {
+        // Updated termination condition
+        String substring = string.substring(i, j); // No need to add 1 to j now
         if (substring == substring.split('').reversed.join('')) {
           palindromes.add(substring);
         }
@@ -28,10 +26,8 @@ class LeetcodeC_005 extends BaseChallenge {
     return fls(palindromes);
   }
 
-// findLongestSubstring
-  static String fls(List<String> list){
+  static String fls(List<String> list) {
     String longestStringInList = "";
-    // iterate through list, and find longest in list
     for (int i = 0; i < list.length; i++) {
       if (list[i].length > longestStringInList.length) {
         longestStringInList = list[i];

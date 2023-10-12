@@ -16,3 +16,5 @@ build/ios/Debug-iphonesimulator/Runner.app/Frameworks/App.framework/_CodeSignatu
 build/ios/Debug-iphonesimulator/App.framework/
 
 build/
+
+ios/Runner/

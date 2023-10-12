@@ -6,6 +6,7 @@ import 'package:fleeter/challenges/leet-002.dart';
 import 'package:fleeter/challenges/leet-003.dart';
 import 'package:fleeter/challenges/leet-004.dart';
 import 'package:fleeter/challenges/leet-005.dart';
+import 'package:fleeter/challenges/leet-006.dart';
 import 'package:fleeter/model/base_challenge.dart';
 import 'package:fleeter/model/course_model.dart';
 import 'package:fleeter/service/theme_service.dart';
@@ -28,6 +29,7 @@ class CourseListScreen extends StatelessWidget {
           LeetcodeC_003(isDarkMode: true),
           LeetcodeC_004(isDarkMode: true),
           LeetcodeC_005(isDarkMode: true),
+          LeetcodeC_006(isDarkMode: true),
 
           // Add more challenges for Course 1...
         ],
