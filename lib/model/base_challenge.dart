@@ -22,7 +22,7 @@ class BaseChallenge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      backgroundColor: Colors.transparent,  // Set to transparent
+      backgroundColor: Colors.transparent,
       navigationBar: CupertinoNavigationBar(
         middle: Text(
           challengeTitle,
@@ -30,8 +30,8 @@ class BaseChallenge extends StatelessWidget {
             color: isDarkMode ? Colors.white : Colors.black,
           ),
         ),
-        backgroundColor: Colors.transparent,  // Set to transparent
-        border: null,  // Remove border
+        backgroundColor: Colors.transparent,
+        border: null,
       ),
       child: Stack(
         children: [
@@ -50,7 +50,7 @@ class BaseChallenge extends StatelessWidget {
               isRandSize: true,
               particleColor: isDarkMode ? Colors.white : Colors.black,
               lineColor: isDarkMode ? Colors.white : Colors.black,
-              connectDots: false,
+              connectDots: true,
             ),
           ),
           _buildContent(),

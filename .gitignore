@@ -1,2 +1,18 @@
 
 .DS_Store
+
+.dart_tool/
+
+build/ios/Debug-iphonesimulator/App.framework/_CodeSignature/
+
+*.Z
+
+build/ios/Debug-iphonesimulator/Runner.app/_CodeSignature/
+
+build/ios/Debug-iphonesimulator/Runner.app/Frameworks/App.framework/_CodeSignature/CodeResources
+
+.idea/
+
+build/ios/Debug-iphonesimulator/App.framework/
+
+build/
