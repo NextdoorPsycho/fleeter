@@ -1,11 +1,11 @@
 import 'dart:ui';
 
+import 'package:blur/blur.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:particles_fly/particles_fly.dart';
-import 'package:blur/blur.dart';
 
-class BaseChallenge extends StatelessWidget {
+class BaseChallenge extends StatefulWidget {
   final String challengeTitle;
   final bool isDarkMode;
   final String challengeDescription;
@@ -20,14 +20,65 @@ class BaseChallenge extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  _BaseChallengeState createState() => _BaseChallengeState();
+}
+
+class _BaseChallengeState extends State<BaseChallenge> with TickerProviderStateMixin {
+  late final AnimationController _titleController;
+  late final AnimationController _descriptionController;
+  late final AnimationController _solutionController;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _titleController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+
+    _descriptionController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+
+    _solutionController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+
+    _startAnimations();
+  }
+
+  void _startAnimations() {
+    _titleController.forward();
+
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _descriptionController.forward();
+    });
+
+    Future.delayed(const Duration(milliseconds: 1000), () {
+      _solutionController.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _solutionController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
       backgroundColor: Colors.transparent,
       navigationBar: CupertinoNavigationBar(
         middle: Text(
-          challengeTitle,
+          widget.challengeTitle,
           style: TextStyle(
-            color: isDarkMode ? Colors.white : Colors.black,
+            color: widget.isDarkMode ? Colors.white : Colors.black,
           ),
         ),
         backgroundColor: Colors.transparent,
@@ -36,7 +87,7 @@ class BaseChallenge extends StatelessWidget {
       child: Stack(
         children: [
           Blur(
-            blurColor: isDarkMode ? Colors.black : Colors.white,
+            blurColor: widget.isDarkMode ? Colors.black : Colors.white,
             blur: 10,
             child: Positioned.fill(
               child: Image.asset('assets/bg.jpg', fit: BoxFit.cover),
@@ -48,8 +99,8 @@ class BaseChallenge extends StatelessWidget {
               width: MediaQuery.of(context).size.width,
               numberOfParticles: 25,
               isRandSize: true,
-              particleColor: isDarkMode ? Colors.white : Colors.black,
-              lineColor: isDarkMode ? Colors.white : Colors.black,
+              particleColor: widget.isDarkMode ? Colors.white : Colors.black,
+              lineColor: widget.isDarkMode ? Colors.white : Colors.black,
               connectDots: true,
             ),
           ),
@@ -65,14 +116,24 @@ class BaseChallenge extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: CupertinoScrollbar(
           child: SingleChildScrollView(
-            child: _buildFrostedGlassBox(),
+            child: Column(
+              children: [
+                _buildFrostedGlassBox(_titleController, _buildText(widget.challengeTitle, 24, FontWeight.bold)),
+                const SizedBox(height: 5),
+                _buildFrostedGlassBox(_descriptionController, _buildText(widget.challengeDescription, 18)),
+                const SizedBox(height: 5),
+                _buildFrostedGlassBox(_solutionController, _buildText('Solution:', 24, FontWeight.bold)),
+                const SizedBox(height: 5),
+                _buildFrostedGlassBox(_solutionController, _buildText(widget.challengeSolution, 18)),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildFrostedGlassBox() {
+  Widget _buildFrostedGlassBox(AnimationController controller, Widget child) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: BackdropFilter(
@@ -83,19 +144,16 @@ class BaseChallenge extends StatelessWidget {
             color: Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildText(challengeTitle, 24, FontWeight.bold),
-              const SizedBox(height: 16),
-              _buildText(challengeDescription, 18),
-              const SizedBox(height: 16),
-              _buildText('Solution:', 24, FontWeight.bold),
-              _buildText(challengeSolution, 18),
-            ],
-          ),
+          child: _buildFadeTransition(controller, child),
         ),
       ),
+    );
+  }
+
+  FadeTransition _buildFadeTransition(AnimationController controller, Widget child) {
+    return FadeTransition(
+      opacity: controller,
+      child: child,
     );
   }
 
@@ -105,7 +163,7 @@ class BaseChallenge extends StatelessWidget {
       style: TextStyle(
         fontSize: fontSize,
         fontWeight: fontWeight,
-        color: isDarkMode ? Colors.white : Colors.black,
+        color: widget.isDarkMode ? Colors.white : Colors.black,
       ),
     );
   }

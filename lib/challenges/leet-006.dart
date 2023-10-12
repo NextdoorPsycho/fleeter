@@ -3,7 +3,7 @@ import 'package:fleeter/model/base_challenge.dart';
 class LeetcodeC_006 extends BaseChallenge {
   LeetcodeC_006({required bool isDarkMode})
       : super(
-          challengeTitle: 'ZigZag Conversion',
+          challengeTitle: 'ZigZag Conversion *',
           isDarkMode: isDarkMode,
           challengeDescription: 'The string "PAYPALISHIRING" is written in a zigzag pattern on a given number of rows like this: '
               '(you may want to display this pattern in a fixed font for better legibility)\n'

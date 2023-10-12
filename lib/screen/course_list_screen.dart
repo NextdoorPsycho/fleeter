@@ -7,6 +7,7 @@ import 'package:fleeter/challenges/leet-003.dart';
 import 'package:fleeter/challenges/leet-004.dart';
 import 'package:fleeter/challenges/leet-005.dart';
 import 'package:fleeter/challenges/leet-006.dart';
+import 'package:fleeter/challenges/leet-007.dart';
 import 'package:fleeter/model/base_challenge.dart';
 import 'package:fleeter/model/course_model.dart';
 import 'package:fleeter/service/theme_service.dart';
@@ -30,6 +31,7 @@ class CourseListScreen extends StatelessWidget {
           LeetcodeC_004(isDarkMode: true),
           LeetcodeC_005(isDarkMode: true),
           LeetcodeC_006(isDarkMode: true),
+          LeetcodeC_007(isDarkMode: true)
 
           // Add more challenges for Course 1...
         ],
@@ -102,7 +104,7 @@ class CustomExpansionTile extends StatefulWidget {
   _CustomExpansionTileState createState() => _CustomExpansionTileState();
 }
 
-class _CustomExpansionTileState extends State<CustomExpansionTile> {
+class _CustomExpansionTileState extends State<CustomExpansionTile> with SingleTickerProviderStateMixin {
   bool isExpanded = false;
 
   @override
@@ -112,8 +114,9 @@ class _CustomExpansionTileState extends State<CustomExpansionTile> {
         return Material(
           color: Colors.transparent,
           elevation: 0,
+          shadowColor: Colors.black,
           shape: RoundedRectangleBorder(
-            side: const BorderSide(color: Colors.white30, width: 2),
+            side: const BorderSide(color: Colors.white30, width: 3),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
@@ -122,16 +125,22 @@ class _CustomExpansionTileState extends State<CustomExpansionTile> {
                 onTap: () => setState(() => isExpanded = !isExpanded),
                 child: _buildTileHeader(themeProvider.isDarkMode),
               ),
-              if (isExpanded)
-                ...widget.course.challenges.map((challenge) {
-                  return GestureDetector(
-                    onTap: () => Navigator.push(
-                      context,
-                      CupertinoPageRoute(builder: (context) => challenge),
-                    ),
-                    child: _buildChallengeItem(challenge, themeProvider.isDarkMode),
-                  );
-                }).toList(),
+              AnimatedCrossFade(
+                firstChild: Container(), // Empty container for collapsed state
+                secondChild: Column(
+                  children: widget.course.challenges.map((challenge) {
+                    return GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        CupertinoPageRoute(builder: (context) => challenge),
+                      ),
+                      child: _buildChallengeItem(challenge, themeProvider.isDarkMode),
+                    );
+                  }).toList(),
+                ),
+                crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                duration: Duration(milliseconds: 300), // Duration of the animation
+              ),
             ],
           ),
         );
@@ -167,14 +176,24 @@ class _CustomExpansionTileState extends State<CustomExpansionTile> {
 
   Widget _buildChallengeItem(BaseChallenge challenge, bool isDarkMode) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 1), // Reduce vertical padding
       child: BlurredContainer(
         color: isDarkMode ? Colors.black : Colors.white,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            challenge.challengeTitle,
-            style: TextStyle(fontSize: 16, color: isDarkMode ? Colors.white : Colors.black),
+        child: CupertinoButton(
+          padding: EdgeInsets.zero, // Remove padding inside the button
+          onPressed: () => Navigator.push(
+            context,
+            CupertinoPageRoute(builder: (context) => challenge),
+          ),
+          child: Align(
+            alignment: Alignment.centerLeft, // Align text to the left
+            child: Padding(
+              padding: const EdgeInsets.all(16), // Add some padding around the text
+              child: Text(
+                challenge.challengeTitle,
+                style: TextStyle(fontSize: 16, color: isDarkMode ? Colors.white : Colors.black),
+              ),
+            ),
           ),
         ),
       ),
