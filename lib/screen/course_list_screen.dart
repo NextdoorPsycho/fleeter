@@ -1,19 +1,20 @@
 import 'dart:ui';
 
-import 'package:fleeter/challenges/leet-000.dart';
-import 'package:fleeter/challenges/leet-001.dart';
-import 'package:fleeter/challenges/leet-002.dart';
-import 'package:fleeter/challenges/leet-003.dart';
-import 'package:fleeter/challenges/leet-004.dart';
-import 'package:fleeter/challenges/leet-005.dart';
-import 'package:fleeter/challenges/leet-006.dart';
-import 'package:fleeter/challenges/leet-007.dart';
 import 'package:fleeter/model/base_challenge.dart';
 import 'package:fleeter/model/course_model.dart';
 import 'package:fleeter/service/theme_service.dart';
+import 'package:fleeter/snippets/challenges/leet-000.dart';
+import 'package:fleeter/snippets/challenges/leet-002.dart';
+import 'package:fleeter/snippets/challenges/leet-003.dart';
+import 'package:fleeter/snippets/challenges/leet-004.dart';
+import 'package:fleeter/snippets/challenges/leet-005.dart';
+import 'package:fleeter/snippets/challenges/leet-006.dart';
+import 'package:fleeter/snippets/challenges/leet-007.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../snippets/challenges/leet-001.dart';
 
 class CourseListScreen extends StatelessWidget {
   const CourseListScreen({Key? key}) : super(key: key);
@@ -24,7 +25,6 @@ class CourseListScreen extends StatelessWidget {
       Course(
         name: 'LeetCode Problems  1 - ∞',
         challenges: [
-          // LeetcodeC_000(isDarkMode: true),
           LeetcodeC_001(isDarkMode: true),
           LeetcodeC_002(isDarkMode: true),
           LeetcodeC_003(isDarkMode: true),
