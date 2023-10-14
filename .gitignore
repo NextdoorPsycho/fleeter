@@ -24,3 +24,5 @@ ios/
 macos/
 
 .flutter-plugins-dependencies
+
+.flutter-plugins

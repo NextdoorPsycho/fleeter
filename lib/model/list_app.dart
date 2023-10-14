@@ -1,8 +1,10 @@
+import 'package:flutter/material.dart';
+
 import 'base_app.dart';
 
-class AppList {
+class AppListBase extends AppBase {
   final String name;
-  final List<MiniApp> apps;
+  final List<AppBase> apps;
 
-  AppList({required this.name, required this.apps});
+  AppListBase({Key? key, required this.name, required this.apps}) : super(key: key, appName: name);
 }

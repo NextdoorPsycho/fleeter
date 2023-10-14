@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 
-class MiniApp extends StatelessWidget {
+class AppBase extends StatelessWidget {
   final String appName;
-  final bool isDarkMode;
 
-  const MiniApp({
+  const AppBase({
     Key? key,
     required this.appName,
-    required this.isDarkMode,
   }) : super(key: key);
 
   @override
