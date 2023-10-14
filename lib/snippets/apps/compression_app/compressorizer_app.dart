@@ -3,14 +3,14 @@ import 'dart:io';
 import 'package:archive/archive_io.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fleeter/model/base_app.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart';
 import 'package:path/path.dart' as p;
-import 'package:process_run/shell.dart';
 
 class CompressorizerApp extends AppBase {
-  const CompressorizerApp({super.key, required super.appName});
+  final _consoleController = TextEditingController();
+
+  CompressorizerApp({super.key, required super.appName});
 
   @override
   Widget build(BuildContext context) {
@@ -40,52 +40,71 @@ class CompressorizerApp extends AppBase {
       throw Exception('Directory does not exist');
     }
 
-    await _processDirectory(directory);
+    runApp(MaterialApp(
+      home: Scaffold(
+        body: Container(
+          color: Colors.black,
+          child: SingleChildScrollView(
+            child: TextField(
+              controller: _consoleController,
+              style: TextStyle(color: Colors.white),
+              maxLines: null,
+              enabled: false,
+            ),
+          ),
+        ),
+      ),
+    ));
+
+    _consoleController.text += 'Processing directory: $directoryPath\n';
+    await processDirectory(directory);
+
+    runApp(CompressorizerApp(
+      appName: 'Compressorizer',
+    ));
   }
 
-  Future<void> _processDirectory(Directory directory) async {
+  Future<void> processDirectory(Directory directory) async {
     await for (var entity in directory.list(recursive: false)) {
       if (entity is File) {
-        await _processFile(entity);
+        _consoleController.text += 'Processing file: ${entity.path}\n';
+        await processFile(entity);
       } else if (entity is Directory) {
-        await _processDirectory(entity);
+        _consoleController.text += 'Processing directory: ${entity.path}\n';
+        await processDirectory(entity);
       }
     }
   }
 
-  Future<void> _processFile(File file) async {
+  Future<void> processFile(File file) async {
     final extension = p.extension(file.path).toLowerCase();
-    if (extension == '.png' || extension == '.jpg' || extension == '.jpeg' || extension == '.tiff' || extension == '.gif' || extension == '.bmp' || extension == '.ico' || extension == '.webp') {
-      await _compressImage(file);
-    } else if (extension == '.jar' || extension == '.zip') {
-      await _processArchive(file);
+    if (isImageFile(extension)) {
+      _consoleController.text += 'Compressing image: ${file.path}\n';
+      await compressImage(file);
+    } else if (isArchiveFile(extension)) {
+      _consoleController.text += 'Processing archive: ${file.path}\n';
+      await processArchive(file);
     }
   }
 
-  Future<void> _compressImage(File file) async {
+  Future<void> compressImage(File file) async {
     final image = decodeImage(await file.readAsBytes());
     if (image != null) {
       final compressedImage = encodeJpg(image, quality: 75);
       await file.writeAsBytes(compressedImage);
-      if (kDebugMode) {
-        print('Compressed ${file.path}');
-      }
+      _consoleController.text += 'Compressed ${file.path}\n';
     }
   }
 
-  Future<void> _processArchive(File file) async {
+  Future<void> processArchive(File file) async {
     final bytes = await file.readAsBytes();
     final archive = ZipDecoder().decodeBytes(bytes);
-
-    final tempDir = await Directory.systemTemp.createTemp();
-    final encoder = ZipFileEncoder();
-    encoder.create('${tempDir.path}/${p.basename(file.path)}');
 
     final newArchive = Archive();
 
     for (var archiveFile in archive) {
       var newFile = archiveFile;
-      if (_isImageFile(archiveFile)) {
+      if (isImageFile(p.extension(archiveFile.name).toLowerCase())) {
         final decodedImage = decodeImage(archiveFile.content);
         if (decodedImage != null) {
           final compressedImage = encodeJpg(decodedImage, quality: 75);
@@ -96,32 +115,24 @@ class CompressorizerApp extends AppBase {
       newArchive.addFile(newFile);
     }
 
-    for (var newFile in newArchive) {
-      encoder.addFile(File('${tempDir.path}/${newFile.name}'));
-    }
+    final encoder = ZipEncoder();
+    final compressedData = encoder.encode(newArchive);
 
-    encoder.close();
-    await file.delete();
-    await File('${tempDir.path}/${p.basename(file.path)}').rename(file.path);
-    if (kDebugMode) {
-      print('Compressed files inside ${file.path}');
-    }
+    await file.writeAsBytes(compressedData!);
+    _consoleController.text += 'Compressed files inside ${file.path}\n';
   }
 
-  bool _isImageFile(ArchiveFile file) {
-    final extension = p.extension(file.name).toLowerCase();
+  bool isImageFile(String extension) {
     return extension == '.png' || extension == '.jpg' || extension == '.jpeg' || extension == '.tiff' || extension == '.gif' || extension == '.bmp' || extension == '.ico' || extension == '.webp';
+  }
+
+  bool isArchiveFile(String extension) {
+    return extension == '.jar' || extension == '.zip';
   }
 }
 
 void main() async {
-  final shell = Shell();
-
-  await shell.run('''
-  osascript -e 'tell application "Terminal" to do script "dart ${Platform.script.toFilePath()}"'
-  ''');
-
-  runApp(const CompressorizerApp(
+  runApp(CompressorizerApp(
     appName: 'Compressorizer',
   ));
 }
