@@ -1,29 +1,75 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:archive/archive_io.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fleeter/model/base_app.dart';
+import 'package:fleeter/model/cup_widgets.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:image/image.dart';
+import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
 
 class CompressorizerApp extends AppBase {
-  final _consoleController = TextEditingController();
+  const CompressorizerApp({Key? key, required String appName}) : super(key: key, appName: appName);
 
-  CompressorizerApp({super.key, required super.appName});
+  @override
+  AppBaseState createState() => _CompressorizerAppState();
+}
+
+class _CompressorizerAppState extends AppBaseState {
+  final _consoleController = TextEditingController();
+  double compressionLevel = 0.5; // 0.0 to 1.0
+  final GlobalKey _globalKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return CupertinoApp(
+      key: _globalKey,
       debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        body: Center(
-          child: ElevatedButton(
-            onPressed: () async {
-              await run();
-            },
-            child: const Text('Compress Files'),
-          ),
+      home: CupertinoPageScaffold(
+        navigationBar: const CupertinoNavigationBar(
+          middle: Text('Compressorizer'),
+        ),
+        child: Stack(
+          children: [
+            buildBackground(),
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                child: Container(color: Colors.black.withOpacity(0)),
+              ),
+            ),
+            Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(15),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    color: Colors.white.withOpacity(0.2),
+                    width: 300,
+                    height: 400, // Increased height
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('Compression Level: ${compressionLevel.toStringAsFixed(2)}'),
+                        CupertinoWidgets.slider(
+                          compressionLevel,
+                          (value) => setState(() {
+                            compressionLevel = value;
+                          }),
+                        ),
+                        const SizedBox(height: 20),
+                        CupertinoWidgets.button('Compress Files', () async {
+                          await run(); // Passing context
+                        }),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -40,28 +86,29 @@ class CompressorizerApp extends AppBase {
       throw Exception('Directory does not exist');
     }
 
-    runApp(MaterialApp(
-      home: Scaffold(
-        body: Container(
-          color: Colors.black,
-          child: SingleChildScrollView(
-            child: TextField(
-              controller: _consoleController,
-              style: TextStyle(color: Colors.white),
-              maxLines: null,
-              enabled: false,
-            ),
+    // Use _globalKey.currentContext to get the current BuildContext
+    showCupertinoModalPopup<void>(
+      context: _globalKey.currentContext!,
+      builder: (BuildContext context) => CupertinoActionSheet(
+        title: const Text("Console Output"),
+        message: SingleChildScrollView(
+          child: CupertinoTextField(
+            controller: _consoleController,
+            maxLines: 20, // Adjust as needed
+            readOnly: true,
           ),
         ),
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Close"),
+        ),
       ),
-    ));
+    );
 
     _consoleController.text += 'Processing directory: $directoryPath\n';
     await processDirectory(directory);
 
-    runApp(CompressorizerApp(
-      appName: 'Compressorizer',
-    ));
+    Navigator.pop(_globalKey.currentContext!); // Close the action sheet
   }
 
   Future<void> processDirectory(Directory directory) async {
@@ -88,9 +135,9 @@ class CompressorizerApp extends AppBase {
   }
 
   Future<void> compressImage(File file) async {
-    final image = decodeImage(await file.readAsBytes());
+    final image = img.decodeImage(await file.readAsBytes());
     if (image != null) {
-      final compressedImage = encodeJpg(image, quality: 75);
+      final compressedImage = img.encodeJpg(image, quality: (compressionLevel * 100).toInt());
       await file.writeAsBytes(compressedImage);
       _consoleController.text += 'Compressed ${file.path}\n';
     }
@@ -105,13 +152,12 @@ class CompressorizerApp extends AppBase {
     for (var archiveFile in archive) {
       var newFile = archiveFile;
       if (isImageFile(p.extension(archiveFile.name).toLowerCase())) {
-        final decodedImage = decodeImage(archiveFile.content);
+        final decodedImage = img.decodeImage(archiveFile.content);
         if (decodedImage != null) {
-          final compressedImage = encodeJpg(decodedImage, quality: 75);
+          final compressedImage = img.encodeJpg(decodedImage, quality: (compressionLevel * 100).toInt());
           newFile = ArchiveFile(archiveFile.name, compressedImage.length, compressedImage);
         }
       }
-
       newArchive.addFile(newFile);
     }
 
@@ -128,6 +174,40 @@ class CompressorizerApp extends AppBase {
 
   bool isArchiveFile(String extension) {
     return extension == '.jar' || extension == '.zip';
+  }
+
+  buildBackground() {
+    return Positioned.fill(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Colors.black, Colors.grey[900]!],
+              ),
+            ),
+            child: Image.asset('assets/bg.jpg', fit: BoxFit.cover),
+          ),
+          ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: 5.0,
+                sigmaY: 5.0,
+              ),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.transparent,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

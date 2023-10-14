@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
-class AppBase extends StatelessWidget {
+class AppBase extends StatefulWidget {
   final String appName;
 
   const AppBase({
@@ -9,8 +9,12 @@ class AppBase extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  AppBaseState createState() => AppBaseState();
+}
+
+class AppBaseState extends State<AppBase> {
+  @override
   Widget build(BuildContext context) {
-    // This is just a placeholder to be replaced by the actual mini app
-    return Center(child: Text('This is the $appName mini app'));
+    return Center(child: Text('This is the ${widget.appName} mini app'));
   }
 }
