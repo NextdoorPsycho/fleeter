@@ -1,6 +1,6 @@
-import 'package:fleeter/screen/course_list_screen.dart';
+import 'package:fleeter/screen/master_directory.dart';
 import 'package:fleeter/service/theme_service.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:provider/provider.dart';
 
@@ -22,9 +22,9 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const CupertinoApp(
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: CourseListScreen(),
+      home: MasterListScreen(),
     );
   }
 }

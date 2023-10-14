@@ -1,9 +1,6 @@
 import 'dart:ui';
 
-import 'package:blur/blur.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:particles_fly/particles_fly.dart';
 
 class BaseChallenge extends StatefulWidget {
   final String challengeTitle;
@@ -72,38 +69,22 @@ class _BaseChallengeState extends State<BaseChallenge> with TickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
-      backgroundColor: Colors.transparent,
-      navigationBar: CupertinoNavigationBar(
-        middle: Text(
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: Text(
           widget.challengeTitle,
           style: TextStyle(
             color: widget.isDarkMode ? Colors.white : Colors.black,
           ),
         ),
         backgroundColor: Colors.transparent,
-        border: null,
+        elevation: 0,
       ),
-      child: Stack(
+      body: Stack(
+        fit: StackFit.expand,
         children: [
-          Blur(
-            blurColor: widget.isDarkMode ? Colors.black : Colors.white,
-            blur: 10,
-            child: Positioned.fill(
-              child: Image.asset('assets/bg.jpg', fit: BoxFit.cover),
-            ),
-          ),
-          Positioned.fill(
-            child: ParticlesFly(
-              height: MediaQuery.of(context).size.height,
-              width: MediaQuery.of(context).size.width,
-              numberOfParticles: 25,
-              isRandSize: true,
-              particleColor: widget.isDarkMode ? Colors.white : Colors.black,
-              lineColor: widget.isDarkMode ? Colors.white : Colors.black,
-              connectDots: true,
-            ),
-          ),
+          Image.asset('assets/bg.jpg', fit: BoxFit.cover),
           _buildContent(),
         ],
       ),
@@ -114,7 +95,7 @@ class _BaseChallengeState extends State<BaseChallenge> with TickerProviderStateM
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: CupertinoScrollbar(
+        child: Scrollbar(
           child: SingleChildScrollView(
             child: Column(
               children: [

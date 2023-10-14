@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
 class MiniApp extends StatelessWidget {
   final String appName;
@@ -12,8 +12,7 @@ class MiniApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // You can return a widget that represents your mini app here.
-    // This is just a placeholder.
+    // This is just a placeholder to be replaced by the actual mini app
     return Center(child: Text('This is the $appName mini app'));
   }
 }

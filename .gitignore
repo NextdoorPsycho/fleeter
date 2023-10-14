@@ -22,3 +22,5 @@ ios/Runner/
 ios/
 
 macos/
+
+.flutter-plugins-dependencies
