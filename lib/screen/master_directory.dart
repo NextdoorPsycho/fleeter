@@ -15,7 +15,7 @@ class MasterListScreen extends StatelessWidget {
       DemoFileApp(
         appName: 'Demo',
       ),
-      CompressorizerApp(
+      const CompressorizerApp(
         appName: "Compressorizer",
       )
     ];
@@ -23,9 +23,18 @@ class MasterListScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: const Text('Programming Challenges'),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+            child: AppBar(
+              backgroundColor: Colors.grey[500]!.withOpacity(0.5),
+              elevation: 0,
+              title: const Text('Programming Challenges', style: TextStyle(color: Colors.white)),
+            ),
+          ),
+        ),
       ),
       body: Stack(
         children: [
@@ -34,31 +43,29 @@ class MasterListScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16.0),
             child: ListView(
               children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: ExpansionTile(
-                    title: const Text('App Projects', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                    children: appLists.map((app) {
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        margin: const EdgeInsets.all(8.0),
-                        child: ListTile(
-                          title: Text(app.appName),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => app),
-                            );
-                          },
-                        ),
-                      );
-                    }).toList(),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10.0),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                    child: ExpansionTile(
+                      title: const Text('App Projects', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+                      children: appLists.map((app) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10.0),
+                          ),
+                          child: ListTile(
+                            title: Text(app.appName, style: const TextStyle(color: Colors.white)),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => app),
+                              );
+                            },
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ),
                 ),
               ],
@@ -84,19 +91,6 @@ class MasterListScreen extends StatelessWidget {
               ),
             ),
             child: Image.asset('assets/bg.jpg', fit: BoxFit.cover),
-          ),
-          ClipRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: 5.0,
-                sigmaY: 5.0,
-              ),
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.transparent,
-                ),
-              ),
-            ),
           ),
         ],
       ),

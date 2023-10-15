@@ -5,8 +5,10 @@ import 'package:archive/archive_io.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fleeter/model/base_app.dart';
 import 'package:fleeter/model/cup_widgets.dart';
+import 'package:fleeter/snippets/apps/compression_app/zips/zip_manip.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:glass_kit/glass_kit.dart';
 import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
 
@@ -18,57 +20,106 @@ class CompressorizerApp extends AppBase {
 }
 
 class _CompressorizerAppState extends AppBaseState {
-  final _consoleController = TextEditingController();
   double compressionLevel = 0.5; // 0.0 to 1.0
   final GlobalKey _globalKey = GlobalKey();
+  bool isLoading = false;
+  List<String> selectedFileTypes = [];
 
   @override
   Widget build(BuildContext context) {
     return CupertinoApp(
-      key: _globalKey,
-      debugShowCheckedModeBanner: false,
       home: CupertinoPageScaffold(
         navigationBar: const CupertinoNavigationBar(
           middle: Text('Compressorizer'),
         ),
         child: Stack(
-          children: [
+          children: <Widget>[
             buildBackground(),
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                child: Container(color: Colors.black.withOpacity(0)),
-              ),
-            ),
-            Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(15),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    color: Colors.white.withOpacity(0.2),
-                    width: 300,
-                    height: 400, // Increased height
+            SafeArea(
+              child: Center(
+                child: GlassContainer.frostedGlass(
+                  height: 500,
+                  width: 300,
+                  borderRadius: BorderRadius.circular(15.0),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('Compression Level: ${compressionLevel.toStringAsFixed(2)}'),
-                        CupertinoWidgets.slider(
-                          compressionLevel,
-                          (value) => setState(() {
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Text(
+                          'Compression Level: ${(compressionLevel * 100).toStringAsFixed(0)}%',
+                          style: const TextStyle(fontSize: 18.0),
+                        ),
+                        CupertinoSlider(
+                          value: compressionLevel,
+                          onChanged: (value) => setState(() {
                             compressionLevel = value;
                           }),
                         ),
-                        const SizedBox(height: 20),
-                        CupertinoWidgets.button('Compress Files', () async {
-                          await run(); // Passing context
-                        }),
+                        const SizedBox(height: 20.0),
+                        ...CupertinoWidgets.checkboxList(
+                          ['.png', '.jpg', '.jpeg', '.tiff', '.gif', '.bmp', '.ico', '.webp', '.jar', '.zip'],
+                          selectedFileTypes,
+                          (value) => setState(() {
+                            selectedFileTypes = value;
+                          }),
+                        ),
+                        const SizedBox(height: 20.0),
+                        CupertinoButton(
+                          padding: EdgeInsets.zero,
+                          onPressed: () async {
+                            await run();
+                          },
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(15.0),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                              child: Container(
+                                height: 50.0,
+                                width: 200.0,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[500]!.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(15.0),
+                                ),
+                                child: const Center(
+                                  child: Text(
+                                    'Compress Files',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
               ),
             ),
+            if (isLoading)
+              Center(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(15.0),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                    child: Container(
+                      height: 120.0,
+                      width: 120.0,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[500]!.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(15.0),
+                      ),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -76,96 +127,111 @@ class _CompressorizerAppState extends AppBaseState {
   }
 
   Future<void> run() async {
-    final directoryPath = await FilePicker.platform.getDirectoryPath();
-    if (directoryPath == null) {
-      return;
+    print('run function called'); // Add this line
+
+    try {
+      setState(() {
+        isLoading = true;
+      });
+
+      final directoryPath = await FilePicker.platform.getDirectoryPath();
+      print('Directory path: $directoryPath'); // Add this line
+
+      if (directoryPath == null) {
+        setState(() {
+          isLoading = false;
+        });
+        return;
+      }
+
+      final directory = Directory(directoryPath);
+      if (!await directory.exists()) {
+        throw Exception('Directory does not exist');
+      }
+
+      await processDirectory(directory);
+    } catch (e) {
+      print('Error: $e'); // Add this line
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
     }
-
-    final directory = Directory(directoryPath);
-    if (!await directory.exists()) {
-      throw Exception('Directory does not exist');
-    }
-
-    // Use _globalKey.currentContext to get the current BuildContext
-    showCupertinoModalPopup<void>(
-      context: _globalKey.currentContext!,
-      builder: (BuildContext context) => CupertinoActionSheet(
-        title: const Text("Console Output"),
-        message: SingleChildScrollView(
-          child: CupertinoTextField(
-            controller: _consoleController,
-            maxLines: 20, // Adjust as needed
-            readOnly: true,
-          ),
-        ),
-        cancelButton: CupertinoActionSheetAction(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("Close"),
-        ),
-      ),
-    );
-
-    _consoleController.text += 'Processing directory: $directoryPath\n';
-    await processDirectory(directory);
-
-    Navigator.pop(_globalKey.currentContext!); // Close the action sheet
   }
 
   Future<void> processDirectory(Directory directory) async {
     await for (var entity in directory.list(recursive: false)) {
       if (entity is File) {
-        _consoleController.text += 'Processing file: ${entity.path}\n';
         await processFile(entity);
       } else if (entity is Directory) {
-        _consoleController.text += 'Processing directory: ${entity.path}\n';
         await processDirectory(entity);
       }
     }
   }
 
+  void dupdate(String message) {
+    print(message);
+    setState(() {}); // Trigger a rebuild to refresh the UI
+  }
+
   Future<void> processFile(File file) async {
     final extension = p.extension(file.path).toLowerCase();
-    if (isImageFile(extension)) {
-      _consoleController.text += 'Compressing image: ${file.path}\n';
-      await compressImage(file);
-    } else if (isArchiveFile(extension)) {
-      _consoleController.text += 'Processing archive: ${file.path}\n';
-      await processArchive(file);
+    print('Processing file with extension: $extension');
+    // Only process file if the extension is in the selectedFileTypes
+    if (selectedFileTypes.contains(extension)) {
+      if (isImageFile(extension)) {
+        await compressImage(file);
+        dupdate('Compressed: ${file.path}');
+      } else if (isArchiveFile(extension)) {
+        await processArchive(file);
+        dupdate('Compressed: ${file.path}');
+      }
     }
   }
 
   Future<void> compressImage(File file) async {
+    print('compressImage function called on file: ${file.path}');
+    setState(() {
+      isLoading = true;
+    });
+
     final image = img.decodeImage(await file.readAsBytes());
     if (image != null) {
       final compressedImage = img.encodeJpg(image, quality: (compressionLevel * 100).toInt());
       await file.writeAsBytes(compressedImage);
-      _consoleController.text += 'Compressed ${file.path}\n';
     }
+
+    setState(() {
+      isLoading = false;
+    });
   }
 
   Future<void> processArchive(File file) async {
+    print('processArchive function called on file: ${file.path}');
+    setState(() {
+      isLoading = true;
+    });
+
     final bytes = await file.readAsBytes();
     final archive = ZipDecoder().decodeBytes(bytes);
 
-    final newArchive = Archive();
+    final tempDir = await Directory.systemTemp.createTemp();
+    final extractor = ZipExtractor(archive, tempDir.path);
+    await extractor.extract();
 
-    for (var archiveFile in archive) {
-      var newFile = archiveFile;
-      if (isImageFile(p.extension(archiveFile.name).toLowerCase())) {
-        final decodedImage = img.decodeImage(archiveFile.content);
-        if (decodedImage != null) {
-          final compressedImage = img.encodeJpg(decodedImage, quality: (compressionLevel * 100).toInt());
-          newFile = ArchiveFile(archiveFile.name, compressedImage.length, compressedImage);
-        }
-      }
-      newArchive.addFile(newFile);
-    }
+    await processDirectory(tempDir);
+
+    final newArchive = await buildArchiveFromDirectory(tempDir);
+    await tempDir.delete(recursive: true);
 
     final encoder = ZipEncoder();
     final compressedData = encoder.encode(newArchive);
 
     await file.writeAsBytes(compressedData!);
-    _consoleController.text += 'Compressed files inside ${file.path}\n';
+
+    setState(() {
+      isLoading = false;
+    });
   }
 
   bool isImageFile(String extension) {
@@ -212,7 +278,19 @@ class _CompressorizerAppState extends AppBaseState {
 }
 
 void main() async {
-  runApp(CompressorizerApp(
+  runApp(const CompressorizerApp(
     appName: 'Compressorizer',
   ));
+}
+
+Future<Archive> buildArchiveFromDirectory(Directory directory) async {
+  final archive = Archive();
+  await for (var entity in directory.list(recursive: true)) {
+    if (entity is File) {
+      final data = await entity.readAsBytes();
+      final archiveFile = ArchiveFile(p.relative(entity.path, from: directory.path), data.length, data);
+      archive.addFile(archiveFile);
+    }
+  }
+  return archive;
 }
