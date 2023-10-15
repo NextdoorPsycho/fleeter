@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:archive/archive_io.dart';
 import 'package:file_picker/file_picker.dart';
@@ -11,19 +10,44 @@ import 'package:flutter/material.dart';
 import 'package:glass_kit/glass_kit.dart';
 import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
+import 'package:video_compress/video_compress.dart';
 
-class CompressorizerApp extends AppBase {
-  const CompressorizerApp({Key? key, required String appName}) : super(key: key, appName: appName);
-
-  @override
-  AppBaseState createState() => _CompressorizerAppState();
-}
-
-class _CompressorizerAppState extends AppBaseState {
+class CompressorizerAppState extends AppBaseState {
   double compressionLevel = 0.5; // 0.0 to 1.0
-  final GlobalKey _globalKey = GlobalKey();
   bool isLoading = false;
   List<String> selectedFileTypes = [];
+
+  Map<String, Future Function(File)> compressorSupportedFormats = {};
+
+  @override
+  void initState() {
+    super.initState();
+    compressorSupportedFormats = {
+      '.png': compressImageWithDartImage,
+      '.jpg': compressImageWithDartImage,
+      '.jpeg': compressImageWithDartImage,
+      // '.webp': compressImageWithDartImage,
+      // '.tga': compressImageWithDartImage,
+      // '.cur': compressImageWithDartImage,
+      // '.pvr': compressImageWithDartImage,
+      // '.bmp': compressImageWithDartImage,
+      // '.ico': compressImageWithDartImage,
+      '.mp4': compressVideoWithVideoCompress,
+    };
+  }
+
+  void dupdate(String message) {
+    print(message);
+    setState(() {});
+  }
+
+  bool isImageFile(String extension) {
+    return compressorSupportedFormats.keys.contains(extension);
+  }
+
+  bool isArchiveFile(String extension) {
+    return extension == '.jar' || extension == '.zip';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +58,7 @@ class _CompressorizerAppState extends AppBaseState {
         ),
         child: Stack(
           children: <Widget>[
-            buildBackground(),
+            buildBackground(context),
             SafeArea(
               child: Center(
                 child: GlassContainer.frostedGlass(
@@ -58,7 +82,11 @@ class _CompressorizerAppState extends AppBaseState {
                         ),
                         const SizedBox(height: 20.0),
                         ...CupertinoWidgets.checkboxList(
-                          ['.png', '.jpg', '.jpeg', '.tiff', '.gif', '.bmp', '.ico', '.webp', '.jar', '.zip'],
+                          [
+                            ...compressorSupportedFormats.keys,
+                            '.jar',
+                            '.zip',
+                          ],
                           selectedFileTypes,
                           (value) => setState(() {
                             selectedFileTypes = value;
@@ -73,7 +101,7 @@ class _CompressorizerAppState extends AppBaseState {
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(15.0),
                             child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                              filter: ColorFilter.mode(Colors.black.withOpacity(0.5), BlendMode.srcOver),
                               child: Container(
                                 height: 50.0,
                                 width: 200.0,
@@ -102,7 +130,7 @@ class _CompressorizerAppState extends AppBaseState {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(15.0),
                   child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                    filter: ColorFilter.mode(Colors.black.withOpacity(0.5), BlendMode.srcOver),
                     child: Container(
                       height: 120.0,
                       width: 120.0,
@@ -127,160 +155,147 @@ class _CompressorizerAppState extends AppBaseState {
   }
 
   Future<void> run() async {
-    print('run function called'); // Add this line
-
+    setState(() => isLoading = true);
     try {
-      setState(() {
-        isLoading = true;
-      });
+      final dirPath = await FilePicker.platform.getDirectoryPath();
+      print('Directory Path: $dirPath'); // Debug log
 
-      final directoryPath = await FilePicker.platform.getDirectoryPath();
-      print('Directory path: $directoryPath'); // Add this line
-
-      if (directoryPath == null) {
-        setState(() {
-          isLoading = false;
-        });
+      if (dirPath == null) {
+        print('Directory path is null'); // Debug log
         return;
       }
 
-      final directory = Directory(directoryPath);
-      if (!await directory.exists()) {
+      final dir = Directory(dirPath);
+
+      if (!await dir.exists()) {
+        print('Directory does not exist'); // Debug log
         throw Exception('Directory does not exist');
       }
 
-      await processDirectory(directory);
+      await processDirectory(dir);
     } catch (e) {
-      print('Error: $e'); // Add this line
+      print('Error in run method: $e'); // Debug log
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      setState(() => isLoading = false);
     }
   }
 
   Future<void> processDirectory(Directory directory) async {
+    print('Processing directory: ${directory.path}'); // Debug log
+
     await for (var entity in directory.list(recursive: false)) {
       if (entity is File) {
+        print('Processing file: ${entity.path}'); // Debug log
         await processFile(entity);
       } else if (entity is Directory) {
+        print('Found sub-directory: ${entity.path}'); // Debug log
         await processDirectory(entity);
       }
     }
   }
 
-  void dupdate(String message) {
-    print(message);
-    setState(() {}); // Trigger a rebuild to refresh the UI
-  }
-
   Future<void> processFile(File file) async {
-    final extension = p.extension(file.path).toLowerCase();
-    print('Processing file with extension: $extension');
-    // Only process file if the extension is in the selectedFileTypes
-    if (selectedFileTypes.contains(extension)) {
-      if (isImageFile(extension)) {
-        await compressImage(file);
-        dupdate('Compressed: ${file.path}');
-      } else if (isArchiveFile(extension)) {
-        await processArchive(file);
-        dupdate('Compressed: ${file.path}');
+    print('Inside processFile for ${file.path}'); // Debug log
+    final ext = p.extension(file.path).toLowerCase();
+    if (!selectedFileTypes.contains(ext)) {
+      print('File extension not selected: $ext'); // Debug log
+      return;
+    }
+    if (compressorSupportedFormats.keys.contains(ext)) {
+      final compressor = compressorSupportedFormats[ext];
+      if (compressor != null) {
+        print('Compressing file: ${file.path}'); // Debug log
+        await compressor(file);
       }
+    } else if (ext == '.jar' || ext == '.zip') {
+      print('Processing archive: ${file.path}'); // Debug log
+      await processArchive(file);
     }
-  }
-
-  Future<void> compressImage(File file) async {
-    print('compressImage function called on file: ${file.path}');
-    setState(() {
-      isLoading = true;
-    });
-
-    final image = img.decodeImage(await file.readAsBytes());
-    if (image != null) {
-      final compressedImage = img.encodeJpg(image, quality: (compressionLevel * 100).toInt());
-      await file.writeAsBytes(compressedImage);
-    }
-
-    setState(() {
-      isLoading = false;
-    });
   }
 
   Future<void> processArchive(File file) async {
-    print('processArchive function called on file: ${file.path}');
-    setState(() {
-      isLoading = true;
-    });
-
     final bytes = await file.readAsBytes();
     final archive = ZipDecoder().decodeBytes(bytes);
-
     final tempDir = await Directory.systemTemp.createTemp();
     final extractor = ZipExtractor(archive, tempDir.path);
     await extractor.extract();
-
     await processDirectory(tempDir);
-
     final newArchive = await buildArchiveFromDirectory(tempDir);
     await tempDir.delete(recursive: true);
-
-    final encoder = ZipEncoder();
-    final compressedData = encoder.encode(newArchive);
-
+    final compressedData = ZipEncoder().encode(newArchive);
     await file.writeAsBytes(compressedData!);
-
-    setState(() {
-      isLoading = false;
-    });
   }
 
-  bool isImageFile(String extension) {
-    return extension == '.png' || extension == '.jpg' || extension == '.jpeg' || extension == '.tiff' || extension == '.gif' || extension == '.bmp' || extension == '.ico' || extension == '.webp';
+  Future<void> compressImageWithDartImage(File file) async {
+    final image = img.decodeImage(await file.readAsBytes());
+    final ext = p.extension(file.path).toLowerCase();
+
+    int quality;
+    if (compressionLevel <= 0.1) {
+      quality = 10; // Very low quality
+    } else if (compressionLevel <= 0.5) {
+      quality = 50; // Low quality
+    } else if (compressionLevel <= 0.9) {
+      quality = 90; // High quality
+    } else {
+      quality = 100; // Maximum quality
+    }
+
+    if (image != null) {
+      List<int>? compressedImage;
+      switch (ext) {
+        case '.png':
+          compressedImage = img.encodePng(
+            image,
+          );
+          break;
+        case '.jpg':
+        case '.jpeg':
+          compressedImage = img.encodeJpg(image, quality: quality);
+          break;
+        default:
+          print('Unsupported extension');
+          return;
+      }
+      await file.writeAsBytes(compressedImage);
+    }
   }
 
-  bool isArchiveFile(String extension) {
-    return extension == '.jar' || extension == '.zip';
-  }
+  Future<void> compressVideoWithVideoCompress(File file) async {
+    VideoQuality videoQuality;
+    if (compressionLevel <= 0.1) {
+      videoQuality = VideoQuality.Res640x480Quality;
+    } else if (compressionLevel <= 0.49) {
+      videoQuality = VideoQuality.LowQuality;
+    } else if (compressionLevel <= 0.9) {
+      videoQuality = VideoQuality.MediumQuality;
+    } else {
+      videoQuality = VideoQuality.DefaultQuality;
+    }
 
-  buildBackground() {
-    return Positioned.fill(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Colors.black, Colors.grey[900]!],
-              ),
-            ),
-            child: Image.asset('assets/bg.jpg', fit: BoxFit.cover),
-          ),
-          ClipRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: 5.0,
-                sigmaY: 5.0,
-              ),
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.transparent,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+    MediaInfo? mediaInfo = await VideoCompress.compressVideo(
+      file.path,
+      quality: videoQuality,
+      deleteOrigin: false,
     );
-  }
-}
 
-void main() async {
-  runApp(const CompressorizerApp(
-    appName: 'Compressorizer',
-  ));
+    if (mediaInfo == null) {
+      print('Compression failed'); // Debug log
+      throw UnimplementedError('Compression failed');
+    }
+  }
+
+  Future<Archive> buildArchiveFromDirectory(Directory directory) async {
+    final archive = Archive();
+    await for (var entity in directory.list(recursive: true)) {
+      if (entity is File) {
+        final data = await entity.readAsBytes();
+        final archiveFile = ArchiveFile(p.relative(entity.path, from: directory.path), data.length, data);
+        archive.addFile(archiveFile);
+      }
+    }
+    return archive;
+  }
 }
 
 Future<Archive> buildArchiveFromDirectory(Directory directory) async {

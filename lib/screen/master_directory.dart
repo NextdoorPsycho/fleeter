@@ -1,10 +1,9 @@
 import 'dart:ui';
 
 import 'package:fleeter/model/base_app.dart';
+import 'package:fleeter/snippets/apps/compression_app/CompressionApp/compressorizer_app.dart';
 import 'package:fleeter/snippets/apps/demo_file_app/demo_file_app.dart';
 import 'package:flutter/material.dart';
-
-import '../snippets/apps/compression_app/compressorizer_app.dart';
 
 class MasterListScreen extends StatelessWidget {
   const MasterListScreen({Key? key}) : super(key: key);
