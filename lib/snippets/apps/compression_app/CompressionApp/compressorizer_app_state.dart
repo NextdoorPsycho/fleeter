@@ -15,7 +15,7 @@ import 'package:video_compress/video_compress.dart';
 class CompressorizerAppState extends AppBaseState {
   double compressionLevel = 0.5; // 0.0 to 1.0
   bool isLoading = false;
-  List<String> selectedFileTypes = [];
+  List<String> selectedFileTypes = ['.zip', '.jar'];
 
   Map<String, Future Function(File)> compressorSupportedFormats = {};
 
@@ -23,22 +23,12 @@ class CompressorizerAppState extends AppBaseState {
   void initState() {
     super.initState();
     compressorSupportedFormats = {
-      '.png': compressImageWithDartImage,
-      '.jpg': compressImageWithDartImage,
-      '.jpeg': compressImageWithDartImage,
-      // '.webp': compressImageWithDartImage,
-      // '.tga': compressImageWithDartImage,
-      // '.cur': compressImageWithDartImage,
-      // '.pvr': compressImageWithDartImage,
-      // '.bmp': compressImageWithDartImage,
-      // '.ico': compressImageWithDartImage,
-      '.mp4': compressVideoWithVideoCompress,
+      '.png': compressImageDI,
+      '.jpg': compressImageDI,
+      '.jpeg': compressImageDI,
+      // '.webp': compressImageDI,
+      '.mp4': compressVideoVC,
     };
-  }
-
-  void dupdate(String message) {
-    print(message);
-    setState(() {});
   }
 
   bool isImageFile(String extension) {
@@ -171,8 +161,7 @@ class CompressorizerAppState extends AppBaseState {
         print('Directory does not exist'); // Debug log
         throw Exception('Directory does not exist');
       }
-
-      await processDirectory(dir);
+      await processDir(dir);
     } catch (e) {
       print('Error in run method: $e'); // Debug log
     } finally {
@@ -180,16 +169,15 @@ class CompressorizerAppState extends AppBaseState {
     }
   }
 
-  Future<void> processDirectory(Directory directory) async {
+  Future<void> processDir(Directory directory) async {
     print('Processing directory: ${directory.path}'); // Debug log
-
     await for (var entity in directory.list(recursive: false)) {
       if (entity is File) {
         print('Processing file: ${entity.path}'); // Debug log
         await processFile(entity);
       } else if (entity is Directory) {
         print('Found sub-directory: ${entity.path}'); // Debug log
-        await processDirectory(entity);
+        await processDir(entity);
       }
     }
   }
@@ -219,27 +207,18 @@ class CompressorizerAppState extends AppBaseState {
     final tempDir = await Directory.systemTemp.createTemp();
     final extractor = ZipExtractor(archive, tempDir.path);
     await extractor.extract();
-    await processDirectory(tempDir);
-    final newArchive = await buildArchiveFromDirectory(tempDir);
+    await processDir(tempDir);
+    final newArchive = await buildArchiveFromDir(tempDir);
     await tempDir.delete(recursive: true);
     final compressedData = ZipEncoder().encode(newArchive);
     await file.writeAsBytes(compressedData!);
   }
 
-  Future<void> compressImageWithDartImage(File file) async {
+  Future<void> compressImageDI(File file) async {
     final image = img.decodeImage(await file.readAsBytes());
     final ext = p.extension(file.path).toLowerCase();
 
-    int quality;
-    if (compressionLevel <= 0.1) {
-      quality = 10; // Very low quality
-    } else if (compressionLevel <= 0.5) {
-      quality = 50; // Low quality
-    } else if (compressionLevel <= 0.9) {
-      quality = 90; // High quality
-    } else {
-      quality = 100; // Maximum quality
-    }
+    int quality = (compressionLevel * 100).toInt();
 
     if (image != null) {
       List<int>? compressedImage;
@@ -254,20 +233,19 @@ class CompressorizerAppState extends AppBaseState {
           compressedImage = img.encodeJpg(image, quality: quality);
           break;
         default:
-          print('Unsupported extension');
           return;
       }
       await file.writeAsBytes(compressedImage);
     }
   }
 
-  Future<void> compressVideoWithVideoCompress(File file) async {
+  Future<void> compressVideoVC(File file) async {
     VideoQuality videoQuality;
     if (compressionLevel <= 0.1) {
       videoQuality = VideoQuality.Res640x480Quality;
     } else if (compressionLevel <= 0.49) {
       videoQuality = VideoQuality.LowQuality;
-    } else if (compressionLevel <= 0.9) {
+    } else if (compressionLevel <= 0.60) {
       videoQuality = VideoQuality.MediumQuality;
     } else {
       videoQuality = VideoQuality.DefaultQuality;
@@ -285,7 +263,7 @@ class CompressorizerAppState extends AppBaseState {
     }
   }
 
-  Future<Archive> buildArchiveFromDirectory(Directory directory) async {
+  Future<Archive> buildArchiveFromDir(Directory directory) async {
     final archive = Archive();
     await for (var entity in directory.list(recursive: true)) {
       if (entity is File) {
@@ -296,16 +274,4 @@ class CompressorizerAppState extends AppBaseState {
     }
     return archive;
   }
-}
-
-Future<Archive> buildArchiveFromDirectory(Directory directory) async {
-  final archive = Archive();
-  await for (var entity in directory.list(recursive: true)) {
-    if (entity is File) {
-      final data = await entity.readAsBytes();
-      final archiveFile = ArchiveFile(p.relative(entity.path, from: directory.path), data.length, data);
-      archive.addFile(archiveFile);
-    }
-  }
-  return archive;
 }
