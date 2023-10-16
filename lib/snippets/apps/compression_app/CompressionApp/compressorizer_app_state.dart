@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fleeter/model/base_app.dart';
 import 'package:fleeter/model/cup_widgets.dart';
+import 'package:fleeter/snippets/apps/compression_app/CompressionApp/compressorizer_app.dart';
 import 'package:fleeter/snippets/apps/compression_app/zips/zip_manip.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +17,8 @@ import 'package:path/path.dart' as p;
 import 'package:video_compress/video_compress.dart';
 
 class CompressorizerAppState extends AppBaseState {
+  int tinyUploadCounter = 0;
+  int tinyUploadLimitPerKey = 0;
   double compressionLevel = 0.5; // 0.0 to 1.0
   bool isLoading = false;
   List<String> selectedFileTypes = ['.zip', '.jar'];
@@ -26,6 +29,8 @@ class CompressorizerAppState extends AppBaseState {
 
   @override
   void initState() {
+    print("CompressorizerAppState init"); // Debug log
+    submitForms(['paviye7880@ksyhtc.com']);
     super.initState();
     compressorSupportedFormats = {
       '.png': (File file) => compressImageTiny(file: file),
@@ -51,6 +56,76 @@ class CompressorizerAppState extends AppBaseState {
     return extension == '.jar' || extension == '.zip';
   }
 
+  void updateApiKey(String newApiKey) {
+    setState(() {
+      apiKey = newApiKey;
+    });
+  }
+
+  void updateUploadLimit(int newLimit) {
+    setState(() {
+      tinyUploadLimitPerKey = newLimit;
+    });
+  }
+
+  void resetTinyUploadCounter() {
+    setState(() {
+      tinyUploadCounter = 0;
+    });
+  }
+
+  void incrementTinyUploadCounter() {
+    setState(() {
+      tinyUploadCounter += 1;
+    });
+  }
+
+  Future<void> showApiKeyDialog(BuildContext context) async {
+    String tempApiKey = apiKey;
+    int tempUploadLimit = tinyUploadLimitPerKey;
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return CupertinoAlertDialog(
+          title: const Text('Enter New API Key and Upload Limit'),
+          content: Column(
+            children: [
+              CupertinoTextField(
+                placeholder: 'API Key',
+                onChanged: (String value) {
+                  tempApiKey = value;
+                },
+              ),
+              CupertinoTextField(
+                placeholder: 'Upload Limit',
+                onChanged: (String value) {
+                  tempUploadLimit = int.tryParse(value) ?? tinyUploadLimitPerKey;
+                },
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            CupertinoDialogAction(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            CupertinoDialogAction(
+              child: const Text('Update'),
+              onPressed: () {
+                updateApiKey(tempApiKey);
+                updateUploadLimit(tempUploadLimit);
+                resetTinyUploadCounter(); // Add this line to reset the counter
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return CupertinoApp(
@@ -64,8 +139,8 @@ class CompressorizerAppState extends AppBaseState {
             SafeArea(
               child: Center(
                 child: GlassContainer.frostedGlass(
-                  height: 500,
-                  width: 300,
+                  height: 550,
+                  width: 400,
                   borderRadius: BorderRadius.circular(15.0),
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),
@@ -141,6 +216,15 @@ class CompressorizerAppState extends AppBaseState {
                             placeholder: 'Enter TinyPNG API Key',
                             onChanged: (String value) {
                               apiKey = value;
+                              tinyUploadCounter = 0;
+                            },
+                          ),
+                        if (showApiKeyInput)
+                          // numberField
+                          CupertinoTextField(
+                            placeholder: 'Enter TinyPNG Upload Limit',
+                            onChanged: (String value) {
+                              tinyUploadLimitPerKey = int.parse(value);
                             },
                           ),
                       ],
@@ -206,6 +290,8 @@ class CompressorizerAppState extends AppBaseState {
       print('Error in run method: $e'); // Debug log
     } finally {
       setState(() => isLoading = false);
+      setState(() => tinyUploadCounter = 0);
+      setState(() => tinyUploadLimitPerKey = 0);
     }
   }
 
@@ -409,17 +495,25 @@ class CompressorizerAppState extends AppBaseState {
 
   Future<void> uploadToTinyPNG(Uri uri, Map<String, String> headers, List<int> fileBytes, File file) async {
     try {
+      // Check if counter has reached the limit
+      if (tinyUploadCounter >= tinyUploadLimitPerKey) {
+        await showApiKeyDialog(context); // Show dialog for new API key
+        return; // Exit the method
+      }
+
+      print("Attempting Upload:  tinyUploadCounter: $tinyUploadCounter : tinyUploadLimitPerKey: $tinyUploadLimitPerKey");
+
       var response = await http.post(uri, headers: headers, body: fileBytes);
       if (response.statusCode != 201) {
         print("Upload failed. Status code is ${response.statusCode}");
       } else {
-        // Assume you have a method to download the compressed image from TinyPNG
+        incrementTinyUploadCounter(); // Increment the counter
         var compressedBytes = await downloadCompressedImageFromTinyPNG(response);
         await file.writeAsBytes(compressedBytes);
-
         var json = jsonDecode(utf8.decode(response.bodyBytes));
         var jsonString = jsonEncode(json);
         print("Upload success. JSON: $jsonString");
+        print("New Counter -> tinyUploadCounter: $tinyUploadCounter : tinyUploadLimitPerKey: $tinyUploadLimitPerKey");
       }
     } catch (e, ee) {
       print("Upload error: $e");
