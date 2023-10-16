@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fleeter/model/base_app.dart';
 import 'package:fleeter/model/cup_widgets.dart';
@@ -8,6 +10,7 @@ import 'package:fleeter/snippets/apps/compression_app/zips/zip_manip.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:glass_kit/glass_kit.dart';
+import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
 import 'package:video_compress/video_compress.dart';
@@ -23,9 +26,10 @@ class CompressorizerAppState extends AppBaseState {
   void initState() {
     super.initState();
     compressorSupportedFormats = {
-      '.png': compressImageDI,
-      '.jpg': compressImageDI,
-      '.jpeg': compressImageDI,
+      '.png': (File file) => compressImageTiny(file: file),
+      '.jpg': (File file) => compressImageTiny(file: file),
+      '.jpeg': (File file) => compressImageTiny(file: file),
+      '.webp': (File file) => compressImageTiny(file: file),
       // '.webp': compressImageDI,
       '.mp4': compressVideoVC,
     };
@@ -239,6 +243,73 @@ class CompressorizerAppState extends AppBaseState {
     }
   }
 
+  Future<void> compressImageTiny({required File file}) async {
+    var apiKey = "p0ZZhWb63nRD3nQhLzCG7BYCNR8PCVmb";
+
+    if (apiKey.isEmpty) {
+      return;
+    }
+
+    var url = "api.tinify.com";
+    Uri uri = Uri.https(url, "/shrink");
+    var auth = "api:$apiKey";
+    var authData = base64Encode(utf8.encode(auth));
+    var authorizationHeader = "Basic $authData";
+    var headers = {
+      "Accept": "application/json",
+      "Authorization": authorizationHeader,
+    };
+
+    final ext = p.extension(file.path).toLowerCase();
+
+    // Read the file's bytes
+    var fileBytes = await file.readAsBytes();
+
+    // Switch case for file type
+    switch (ext) {
+      case '.png':
+      case '.jpg':
+      case '.jpeg':
+      case '.webp':
+        print("Uploading image to TinyPNG...");
+        await uploadToTinyPNG(uri, headers, fileBytes, file);
+        break;
+      default:
+        return;
+    }
+  }
+
+  Future<List<int>> downloadCompressedImageFromTinyPNG(http.Response response) async {
+    var json = jsonDecode(utf8.decode(response.bodyBytes));
+    String? url = json['output']['url'];
+    if (url == null) {
+      throw Exception('Compressed image URL not found in the response.');
+    }
+    Uri uri = Uri.parse(url);
+    var dio = Dio();
+    List<int> compressedBytes = [];
+    try {
+      await dio.get<List<int>>(
+        uri.toString(),
+        options: Options(responseType: ResponseType.bytes),
+        onReceiveProgress: (count, total) {
+          // Optional: You can track download progress here.
+        },
+      ).then((rsp) {
+        if (rsp.statusCode == 200) {
+          compressedBytes = rsp.data!;
+        } else {
+          throw Exception('Failed to download compressed image.');
+        }
+      });
+    } catch (e) {
+      throw Exception('Download error: $e');
+    }
+    print('Downloaded compressed image from TinyPNG');
+    print('debug: url is -> $url');
+    return compressedBytes;
+  }
+
   Future<void> compressVideoVC(File file) async {
     VideoQuality videoQuality;
     if (compressionLevel <= 0.1) {
@@ -273,5 +344,24 @@ class CompressorizerAppState extends AppBaseState {
       }
     }
     return archive;
+  }
+
+  Future<void> uploadToTinyPNG(Uri uri, Map<String, String> headers, List<int> fileBytes, File file) async {
+    try {
+      var response = await http.post(uri, headers: headers, body: fileBytes);
+      if (response.statusCode != 201) {
+        print("Upload failed. Status code is ${response.statusCode}");
+      } else {
+        // Assume you have a method to download the compressed image from TinyPNG
+        var compressedBytes = await downloadCompressedImageFromTinyPNG(response);
+        await file.writeAsBytes(compressedBytes);
+
+        var json = jsonDecode(utf8.decode(response.bodyBytes));
+        var jsonString = jsonEncode(json);
+        print("Upload success. JSON: $jsonString");
+      }
+    } catch (e) {
+      print("Upload error: $e");
+    }
   }
 }
