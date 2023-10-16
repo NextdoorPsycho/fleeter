@@ -19,6 +19,8 @@ class CompressorizerAppState extends AppBaseState {
   double compressionLevel = 0.5; // 0.0 to 1.0
   bool isLoading = false;
   List<String> selectedFileTypes = ['.zip', '.jar'];
+  String apiKey = ""; // Initialized as empty
+  bool showApiKeyInput = false;
 
   Map<String, Future Function(File)> compressorSupportedFormats = {};
 
@@ -30,6 +32,12 @@ class CompressorizerAppState extends AppBaseState {
       '.jpg': (File file) => compressImageTiny(file: file),
       '.jpeg': (File file) => compressImageTiny(file: file),
       '.webp': (File file) => compressImageTiny(file: file),
+
+      // '.png': compressImageDI,
+      // '.jpg': compressImageDI,
+      // '.jpeg': compressImageDI,
+      // '.webp': compressImageDI,
+
       // '.webp': compressImageDI,
       '.mp4': compressVideoVC,
     };
@@ -113,6 +121,28 @@ class CompressorizerAppState extends AppBaseState {
                             ),
                           ),
                         ),
+                        //spacer
+                        const SizedBox(height: 20.0),
+
+                        // the title for the button
+                        const Text('TinyPNG API Key'),
+                        //the switch for the button
+                        CupertinoSwitch(
+                          value: showApiKeyInput,
+                          onChanged: (bool value) {
+                            setState(() {
+                              showApiKeyInput = value;
+                            });
+                          },
+                        ),
+                        if (showApiKeyInput)
+                          // the text place
+                          CupertinoTextField(
+                            placeholder: 'Enter TinyPNG API Key',
+                            onChanged: (String value) {
+                              apiKey = value;
+                            },
+                          ),
                       ],
                     ),
                   ),
@@ -166,10 +196,42 @@ class CompressorizerAppState extends AppBaseState {
         throw Exception('Directory does not exist');
       }
       await processDir(dir);
+
+      if (apiKey.isNotEmpty) {
+        // Second pass for Tiny compression
+        print('Starting second pass for Tiny compression'); // Debug log
+        await processDirForTiny(dir);
+      }
     } catch (e) {
       print('Error in run method: $e'); // Debug log
     } finally {
       setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> processDirForTiny(Directory directory) async {
+    print('Processing directory for Tiny: ${directory.path}'); // Debug log
+    await for (var entity in directory.list(recursive: false)) {
+      if (entity is File) {
+        print('Processing file for Tiny: ${entity.path}'); // Debug log
+        await processFileForTiny(entity);
+      } else if (entity is Directory) {
+        print('Found sub-directory for Tiny: ${entity.path}'); // Debug log
+        await processDirForTiny(entity);
+      }
+    }
+  }
+
+  Future<void> processFileForTiny(File file) async {
+    print('Inside processFileForTiny for ${file.path}'); // Debug log
+    final ext = p.extension(file.path).toLowerCase();
+    if (!selectedFileTypes.contains(ext)) {
+      print('File extension not selected for Tiny: $ext'); // Debug log
+      return;
+    }
+    if (compressorSupportedFormats.keys.contains(ext)) {
+      print('Compressing file with Tiny: ${file.path}'); // Debug log
+      await compressImageTiny(file: file);
     }
   }
 
@@ -196,8 +258,8 @@ class CompressorizerAppState extends AppBaseState {
     if (compressorSupportedFormats.keys.contains(ext)) {
       final compressor = compressorSupportedFormats[ext];
       if (compressor != null) {
-        print('Compressing file: ${file.path}'); // Debug log
-        await compressor(file);
+        print('Compressing file with DI: ${file.path}'); // Debug log
+        await compressImageDI(file); // Use DI first
       }
     } else if (ext == '.jar' || ext == '.zip') {
       print('Processing archive: ${file.path}'); // Debug log
@@ -244,8 +306,7 @@ class CompressorizerAppState extends AppBaseState {
   }
 
   Future<void> compressImageTiny({required File file}) async {
-    var apiKey = "p0ZZhWb63nRD3nQhLzCG7BYCNR8PCVmb";
-
+    var apiKey = this.apiKey;
     if (apiKey.isEmpty) {
       return;
     }
@@ -360,8 +421,9 @@ class CompressorizerAppState extends AppBaseState {
         var jsonString = jsonEncode(json);
         print("Upload success. JSON: $jsonString");
       }
-    } catch (e) {
+    } catch (e, ee) {
       print("Upload error: $e");
+      print(ee);
     }
   }
 }
